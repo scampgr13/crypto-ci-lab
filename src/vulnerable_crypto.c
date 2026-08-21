@@ -1,30 +1,41 @@
-#include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
 #include <openssl/bn.h>
+#include <openssl/rand.h>
 #include <stdio.h>
 #include <string.h>
 
-void weak_hash(const unsigned char *msg, size_t len) {
-    MD5_CTX md5;
-    unsigned char md5_out[MD5_DIGEST_LENGTH];
-    MD5_Init(&md5);
-    MD5_Update(&md5, msg, len);
-    MD5_Final(md5_out, &md5);
+void strong_hash(const unsigned char *msg, size_t len) {
+    SHA256_CTX sha256;
+    unsigned char sha256_out[SHA256_DIGEST_LENGTH];
 
-    SHA_CTX sha1;
-    unsigned char sha1_out[SHA_DIGEST_LENGTH];
-    SHA1_Init(&sha1);
-    SHA1_Update(&sha1, msg, len);
-    SHA1_Final(sha1_out, &sha1);
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, msg, len);
+    SHA256_Final(sha256_out, &sha256);
+
+    /* MD5 -> SHA-256
+       SHA-1 -> SHA-256 */
 }
 
-void weak_public_key(void) {
+void strong_random(void) {
+    unsigned char random_bytes[32];
+
+    if (RAND_bytes(random_bytes, sizeof(random_bytes)) != 1) {
+        fprintf(stderr, "RAND_bytes failed\n");
+        return;
+    }
+}
+
+void strong_public_key(void) {
     RSA *rsa = RSA_new();
     BIGNUM *e = BN_new();
+
     BN_set_word(e, RSA_F4);
-    RSA_generate_key_ex(rsa, 1024, e, NULL);
+
+    /* RSA 1024-bit -> RSA 2048-bit */
+    RSA_generate_key_ex(rsa, 2048, e, NULL);
+
     BN_free(e);
     RSA_free(rsa);
 
@@ -34,8 +45,11 @@ void weak_public_key(void) {
 
 int main(void) {
     const unsigned char msg[] = "crypto policy test";
-    weak_hash(msg, strlen((const char *)msg));
-    weak_public_key();
-    printf("This file intentionally uses weak crypto.\n");
+
+    strong_hash(msg, strlen((const char *)msg));
+    strong_random();
+    strong_public_key();
+
+    printf("This file uses stronger crypto primitives.\n");
     return 0;
 }
